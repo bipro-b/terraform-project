@@ -7,6 +7,7 @@ on:
       - "v*"
 
 jobs:
+  # ---------------- DEV ENV ----------------
   deploy-dev:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -49,10 +50,15 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: node-api-dev-repo
-          IMAGE_TAG: prod-latest
+          IMAGE_TAG: dev-latest
         run: |
-          docker build -t $ECR_REPOSITORY .
+          # Build image with the correct tag
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+
+          # Tag with ECR registry URL
           docker tag $ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+          # Push to ECR
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Setup Terraform
@@ -72,6 +78,7 @@ jobs:
         working-directory: ./infra/envs/dev
         run: terraform apply -auto-approve -input=false
 
+  # ---------------- PROD ENV ----------------
   deploy-prod:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
@@ -113,11 +120,16 @@ jobs:
         working-directory: ./app
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: node-api-dev-repo
+          ECR_REPOSITORY: node-api-prod-repo
           IMAGE_TAG: prod-latest
         run: |
-          docker build -t $ECR_REPOSITORY .
+          # Build image with the correct tag
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+
+          # Tag with ECR registry URL
           docker tag $ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+          # Push to ECR
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Setup Terraform
